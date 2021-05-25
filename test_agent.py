@@ -31,7 +31,7 @@ class TestAgent(object):
             self.output_format = 'all'
 
     def test(self, x, y, model_path, conf_dict=None):
-        tf.reset_default_graph()
+        tf.compat.v1.reset_default_graph()
         max_len = get_max_length(x)
 
         # Create the model
@@ -45,7 +45,7 @@ class TestAgent(object):
         model.build(self.output_format)
 
         print('Variables to be loaded')
-        for v in tf.trainable_variables():
+        for v in tf.compat.v1.trainable_variables():
             print(v)
 
         # Prepare the test data
@@ -55,7 +55,7 @@ class TestAgent(object):
         metric_tags = ['Test Loss', 'Test Acc', 'Test F1']
 
         with create_sess() as sess:
-            saver = tf.train.Saver()
+            saver = tf.compat.v1.train.Saver()
             saver.restore(sess,
                           tf.train.latest_checkpoint(model_path))
 

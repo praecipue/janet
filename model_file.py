@@ -2,6 +2,7 @@ import tensorflow as tf
 from aux_code.rnn_cells import CustomLSTMCell
 from aux_code.tf_ops import linear
 
+tf.compat.v1.disable_eager_execution()
 
 def rnn(x, h_dim, y_dim, keep_prob, sequence_lengths,
         training, output_format, cell_type='janet',
@@ -25,9 +26,9 @@ def rnn(x, h_dim, y_dim, keep_prob, sequence_lengths,
             cell = CustomLSTMCell(dim, t_max=t_max, forget_only=True)
         elif cell_type == 'rnn':
             print('Using the standard RNN cell')
-            cell = tf.contrib.rnn.BasicRNNCell(dim)
+            cell = tf.compat.v1.nn.rnn_cell.BasicRNNCell(dim)
 
-        drop_cell = tf.contrib.rnn.DropoutWrapper(
+        drop_cell = tf.compat.v1.nn.rnn_cell.DropoutWrapper(
             cell,
             input_keep_prob=1,
             output_keep_prob=keep_prob)
@@ -35,13 +36,13 @@ def rnn(x, h_dim, y_dim, keep_prob, sequence_lengths,
 
     if len(h_dim) > 1:
         # Multilayer RNN
-        cell = tf.contrib.rnn.MultiRNNCell(
+        cell = tf.compat.v1.nn.rnn_cell.MultiRNNCell(
             [single_cell(dim) for dim in h_dim])
     else:
         cell = single_cell(h_dim[0])
 
     if output_format == 'last':
-        _, final_state = tf.nn.dynamic_rnn(
+        _, final_state = tf.compat.v1.nn.dynamic_rnn(
             cell, x, sequence_length=sequence_lengths,
             dtype=tf.float32)
 
@@ -59,13 +60,13 @@ def rnn(x, h_dim, y_dim, keep_prob, sequence_lengths,
 
         proj_out = linear(out, y_dim, scope='output_mapping')
     elif output_format == 'all':
-        out, _ = tf.nn.dynamic_rnn(
+        out, _ = tf.compat.v1.nn.dynamic_rnn(
             cell, x, sequence_length=sequence_lengths,
             dtype=tf.float32)
         flat_out = tf.reshape(out, (-1, out.get_shape()[-1]))
         proj_out = linear(flat_out, y_dim, scope='output_mapping')
         proj_out = tf.reshape(proj_out,
-                              (tf.shape(out)[0], tf.shape(out)[1], y_dim))
+                              (tf.shape(input=out)[0], tf.shape(input=out)[1], y_dim))
 
     return proj_out
 
@@ -91,65 +92,65 @@ class RNN_Model(object):
         self.mse = mse
 
     def build_inputs(self):
-        self.keep_prob = tf.placeholder(tf.float32, name='keep_prob')
-        self.x = tf.placeholder(tf.float32, [None, None, self.n_features],
+        self.keep_prob = tf.compat.v1.placeholder(tf.float32, name='keep_prob')
+        self.x = tf.compat.v1.placeholder(tf.float32, [None, None, self.n_features],
                                 name='x')
         if self.output_seq:
-            self.y = tf.placeholder(tf.float32, [None, None, self.n_classes],
+            self.y = tf.compat.v1.placeholder(tf.float32, [None, None, self.n_classes],
                                     name='y')
         else:
-            self.y = tf.placeholder(tf.float32, [None, self.n_classes],
+            self.y = tf.compat.v1.placeholder(tf.float32, [None, self.n_classes],
                                     name='y')
-        self.seq_lens = tf.placeholder(tf.int32, [None],
+        self.seq_lens = tf.compat.v1.placeholder(tf.int32, [None],
                                        name="sequence_lengths")
-        self.training = tf.placeholder(tf.bool)
+        self.training = tf.compat.v1.placeholder(tf.bool)
 
     def build_loss(self, outputs):
         if self.mse:
-            mean_squared_error = tf.losses.mean_squared_error(
+            mean_squared_error = tf.compat.v1.losses.mean_squared_error(
                 labels=self.y, predictions=outputs)
-            self.loss_nowd = tf.reduce_mean(mean_squared_error)
-            tf.summary.scalar('mean_squared_error',
-                              tf.reduce_mean(mean_squared_error))
+            self.loss_nowd = tf.reduce_mean(input_tensor=mean_squared_error)
+            tf.compat.v1.summary.scalar('mean_squared_error',
+                              tf.reduce_mean(input_tensor=mean_squared_error))
         else:
             if self.output_seq:
-                flat_out = tf.reshape(outputs, (-1, tf.shape(outputs)[-1]))
-                flat_y = tf.reshape(self.y, (-1, tf.shape(self.y)[-1]))
+                flat_out = tf.reshape(outputs, (-1, tf.shape(input=outputs)[-1]))
+                flat_y = tf.reshape(self.y, (-1, tf.shape(input=self.y)[-1]))
                 sample_cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
-                    labels=flat_y, logits=flat_out)
+                    labels=tf.stop_gradient(flat_y), logits=flat_out)
 
             else:
                 sample_cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
-                    labels=self.y, logits=outputs)
+                    labels=tf.stop_gradient(self.y), logits=outputs)
 
-            tf.summary.scalar('cross_entropy',
-                              tf.reduce_mean(sample_cross_entropy))
-            self.loss_nowd = tf.reduce_mean(sample_cross_entropy)
+            tf.compat.v1.summary.scalar('cross_entropy',
+                              tf.reduce_mean(input_tensor=sample_cross_entropy))
+            self.loss_nowd = tf.reduce_mean(input_tensor=sample_cross_entropy)
 
         weight_decay = self.weight_decay*tf.add_n([tf.nn.l2_loss(v) for v in
-                                                   tf.trainable_variables()
+                                                   tf.compat.v1.trainable_variables()
                                                    if 'bias' not in v.name])
-        tf.summary.scalar('weight_decay', weight_decay)
+        tf.compat.v1.summary.scalar('weight_decay', weight_decay)
         self.loss = self.loss_nowd + weight_decay
 
     def build_optimizer(self):
         if self.opt_method == 'adam':
             print('Optimizing with Adam')
-            opt = tf.train.AdamOptimizer(self.learning_rate)
+            opt = tf.compat.v1.train.AdamOptimizer(self.learning_rate)
         elif self.opt_method == 'rms':
             print('Optimizing with RMSProp')
-            opt = tf.train.RMSPropOptimizer(self.learning_rate)
+            opt = tf.compat.v1.train.RMSPropOptimizer(self.learning_rate)
         elif self.opt_method == 'momentum':
             print('Optimizing with Nesterov momentum SGD')
-            opt = tf.train.MomentumOptimizer(self.learning_rate,
+            opt = tf.compat.v1.train.MomentumOptimizer(self.learning_rate,
                                              momentum=0.9,
                                              use_nesterov=True)
 
-        params = tf.trainable_variables()
-        gradients = tf.gradients(self.loss, params)
+        params = tf.compat.v1.trainable_variables()
+        gradients = tf.gradients(ys=self.loss, xs=params)
         clipped_gradients, norm = tf.clip_by_global_norm(gradients,
                                                          self.max_gradient_norm)
-        tf.summary.scalar('gradients_norm', norm)
+        tf.compat.v1.summary.scalar('gradients_norm', norm)
 
         self.train_opt = opt.apply_gradients(zip(clipped_gradients, params))
 
@@ -175,10 +176,10 @@ class RNN_Model(object):
         self.output_probs = tf.nn.softmax(outputs)
         if self.output_seq:
             self.output_probs = tf.reshape(
-                self.output_probs, (-1, tf.shape(self.output_probs)[-1]))
+                self.output_probs, (-1, tf.shape(input=self.output_probs)[-1]))
 
         if not self.is_test:
             print("Adding training operations")
             self.build_optimizer()
 
-        self.summary_op = tf.summary.merge_all()
+        self.summary_op = tf.compat.v1.summary.merge_all()

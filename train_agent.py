@@ -14,6 +14,7 @@ from aux_code.ops import (get_minibatches_indices, pad_seqs,
                           save_config_dict, get_validset_feeds)
 from aux_code.tf_ops import create_scalar_summaries, create_sess
 
+tf.compat.v1.disable_eager_execution()
 
 class TrainAgent(object):
     def __init__(self, args):
@@ -66,7 +67,7 @@ class TrainAgent(object):
                           )
         model.build(self.output_format)
 
-        saver = tf.train.Saver()
+        saver = tf.compat.v1.train.Saver()
 
         # Prepare validation and test data
         v_input_feed, v_output_feed = get_validset_feeds(
@@ -81,12 +82,12 @@ class TrainAgent(object):
             metric_tags += ['Test Loss', 'Test Acc', 'Test F1']
 
         with create_sess() as sess:
-            sess.run([tf.global_variables_initializer(),
-                      tf.local_variables_initializer()])
+            sess.run([tf.compat.v1.global_variables_initializer(),
+                      tf.compat.v1.local_variables_initializer()])
             best_loss = 1e8
             best_epoch = 0
 
-            tb_writer = tf.summary.FileWriter(self.logdir, sess.graph)
+            tb_writer = tf.compat.v1.summary.FileWriter(self.logdir, sess.graph)
 
             print("Training model ...")
             tb_step = 0

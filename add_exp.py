@@ -28,4 +28,4 @@ for r in range(10):
 
     args_dict.update(config_dict)
     main.main(args)
-    tf.reset_default_graph()
+    tf.compat.v1.reset_default_graph()
