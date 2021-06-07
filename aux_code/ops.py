@@ -244,10 +244,9 @@ def one_hot_sequence(x, depth=None):
         depth = int(x.max() + 1)
 
     one_hot = np.zeros(x.shape + (depth,))
-    # TODO: speed up this operation its super slow.
-    for i in range(x.shape[0]):
-        for j in range(x.shape[1]):
-            one_hot[i,j,int(x[i,j])] = 1
+    # TODO: speed up this operation its super slow. # Partially done
+    for j in range(x.shape[1]):
+        one_hot[np.arange(x.shape[0]),j,x[:,j]] = 1
 
     return one_hot
 
