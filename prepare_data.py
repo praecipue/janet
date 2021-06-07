@@ -61,7 +61,7 @@ def get_add(n_data, seq_len):
 
 
 def get_copy(n_data, seq_len):
-    x = np.zeros((n_data, seq_len+1+2*10))
+    x = np.zeros((n_data, seq_len+1+2*10), dtype=np.uint8)
     info = np.random.randint(1, high=9, size=(n_data, 10))
 
     x[:,:10] = info
