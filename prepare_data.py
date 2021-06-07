@@ -105,12 +105,9 @@ def get_mnist(permute=False):
     x_train = list(np.array(x_train).reshape(50000, 784, 1)[:, perm_mask])
     x_valid = list(np.array(x_valid).reshape(10000, 784, 1)[:, perm_mask])
     x_test = list(np.array(x_test).reshape(10000, 784, 1)[:, perm_mask])
-    y_train = np.zeros((l_train.shape[0], l_train.max()+1), dtype=np.float32)
-    y_train[np.arange(l_train.shape[0]), l_train] = 1
-    y_test = np.zeros((l_test.shape[0], l_test.max()+1), dtype=np.float32)
-    y_test[np.arange(l_test.shape[0]), l_test] = 1
-    y_valid = np.zeros((l_valid.shape[0], l_valid.max()+1), dtype=np.float32)
-    y_valid[np.arange(l_valid.shape[0]), l_valid] = 1
+    y_train = keras.utils.to_categorical(l_train)
+    y_test = keras.utils.to_categorical(l_test)
+    y_valid = keras.utils.to_categorical(l_valid)
 
     print("Train:Validation:Testing - %d:%d:%d" % (len(y_train), len(y_valid),
                                                    len(y_test)))
