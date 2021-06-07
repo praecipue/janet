@@ -1,4 +1,5 @@
 import numpy as np
+import tensorflow.keras as keras
 
 from aux_code.ops import randomly_split_data
 from aux_code.ops import one_hot_sequence
@@ -70,8 +71,8 @@ def get_copy(n_data, seq_len):
     y = np.zeros_like(x)
     y[:,-10:] = info
 
-    x = one_hot_sequence(x)
-    y = one_hot_sequence(y)
+    x = keras.utils.to_categorical(x)
+    y = keras.utils.to_categorical(y)
 
     n_train, n_valid, n_test = [100000, 10000, 40000]
     x_train = list(x[:n_train])
@@ -84,7 +85,6 @@ def get_copy(n_data, seq_len):
 
 
 def get_mnist(permute=False):
-    import tensorflow.keras as keras
 
     (x_train, l_train), (x_test, l_test) = keras.datasets.mnist.load_data()
     assert x_train.shape == (60000, 28, 28)
