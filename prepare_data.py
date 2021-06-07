@@ -84,20 +84,33 @@ def get_copy(n_data, seq_len):
 
 
 def get_mnist(permute=False):
-    from tensorflow.examples.tutorials.mnist import input_data
-    mnist = input_data.read_data_sets("MNIST", one_hot=True)
+    import tensorflow.keras as keras
+
+    (x_train, l_train), (x_test, l_test) = keras.datasets.mnist.load_data()
+    assert x_train.shape == (60000, 28, 28)
+    assert x_test.shape == (10000, 28, 28)
+    assert l_train.shape == (60000,)
+    assert l_test.shape == (10000,)
+    
+    x_valid = x_train[-10000:]
+    l_valid = l_train[-10000:]
+    x_train = x_train[:-10000]
+    l_train = l_train[:-10000]
 
     if permute:
         perm_mask = np.load('misc/pmnist_permutation_mask.npy')
     else:
         perm_mask = np.arange(784)
 
-    x_train = list(np.expand_dims(mnist.train.images[:,perm_mask],-1))
-    y_train = mnist.train.labels
-    x_valid = list(np.expand_dims(mnist.validation.images[:,perm_mask],-1))
-    y_valid = mnist.validation.labels
-    x_test = list(np.expand_dims(mnist.test.images[:,perm_mask], -1))
-    y_test = mnist.test.labels
+    x_train = list(np.array(x_train).reshape(50000, 784, 1)[:, perm_mask])
+    x_valid = list(np.array(x_valid).reshape(10000, 784, 1)[:, perm_mask])
+    x_test = list(np.array(x_test).reshape(10000, 784, 1)[:, perm_mask])
+    y_train = np.zeros((l_train.shape[0], l_train.max()+1), dtype=np.float32)
+    y_train[np.arange(l_train.shape[0]), l_train] = 1
+    y_test = np.zeros((l_test.shape[0], l_test.max()+1), dtype=np.float32)
+    y_test[np.arange(l_test.shape[0]), l_test] = 1
+    y_valid = np.zeros((l_valid.shape[0], l_valid.max()+1), dtype=np.float32)
+    y_valid[np.arange(l_valid.shape[0]), l_valid] = 1
 
     print("Train:Validation:Testing - %d:%d:%d" % (len(y_train), len(y_valid),
                                                    len(y_test)))
