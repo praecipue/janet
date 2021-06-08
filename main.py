@@ -70,7 +70,7 @@ def parse_args():
                         help='[False] Log test data metrics on TB.')
     parser.add_argument('--cell', type=str,
                         default='janet',
-                        choices=['janet','lstm','rnn'],
+                        choices=['janet','lstm','sjanet','rnn'],
                         help='[%(default)s] The type of cell to use.')
     parser.add_argument("--T", type=int,
                         default=200,

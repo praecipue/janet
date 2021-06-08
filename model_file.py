@@ -1,5 +1,5 @@
 import tensorflow as tf
-from aux_code.rnn_cells import CustomLSTMCell
+from aux_code.rnn_cells import CustomLSTMCell, SimplifiedJANETCell
 from aux_code.tf_ops import linear
 
 tf.compat.v1.disable_eager_execution()
@@ -24,6 +24,8 @@ def rnn(x, h_dim, y_dim, keep_prob, sequence_lengths,
             cell = CustomLSTMCell(dim, t_max=t_max, forget_only=False)
         elif cell_type == 'janet':
             cell = CustomLSTMCell(dim, t_max=t_max, forget_only=True)
+        elif cell_type == 'sjanet':
+            cell = SimplifiedJANETCell(dim, t_max=t_max)
         elif cell_type == 'rnn':
             print('Using the standard RNN cell')
             cell = tf.compat.v1.nn.rnn_cell.BasicRNNCell(dim)
@@ -51,11 +53,11 @@ def rnn(x, h_dim, y_dim, keep_prob, sequence_lengths,
         if len(h_dim) > 1:
             # If we have a multi-layer rnn, get the top layer state
             out = final_state[-1]
-            if cell_type == 'lstm' or cell_type == 'janet':
+            if cell_type == 'lstm' or cell_type == 'janet' or cell_type == 'sjanet':
                 out = out[1]
         else:
             out = final_state
-            if cell_type == 'lstm' or cell_type == 'janet':
+            if cell_type == 'lstm' or cell_type == 'janet' or cell_type == 'sjanet':
                 out = out[1]
 
         proj_out = linear(out, y_dim, scope='output_mapping')

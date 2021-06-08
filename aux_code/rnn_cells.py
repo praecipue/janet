@@ -71,7 +71,7 @@ class CustomLSTMCell(tf.compat.v1.nn.rnn_cell.BasicLSTMCell):
             return new_h, new_state
 
 
-def chrono_init(t_max, num_gates):
+def chrono_init(t_max, num_gates, simplified=False):
     def _initializer(shape, dtype=tf.float32, partition_info=None):
         num_units = shape[0]//num_gates
         uni_vals = tf.math.log(random_ops.random_uniform([num_units], minval=1.0,
@@ -87,20 +87,74 @@ def chrono_init(t_max, num_gates):
         elif num_gates == 2:
             bias_j = tf.zeros(num_units)
             bias_f = uni_vals
-
+            if simplified:
+                return bias_j
             return tf.concat([bias_j, bias_f], 0)
 
     return _initializer
 
 
-def bias_initializer(num_gates):
+def bias_initializer(num_gates, simplified=False):
     def _initializer(shape, dtype=tf.float32, partition_info=None):
         p = np.zeros(shape)
-        num_units = int(shape[0]//num_gates)
-        # i, j, o, f
-        # f:
-        p[-num_units:] = np.ones(num_units)
+        if not simplified:
+            num_units = int(shape[0]//num_gates)
+            # i, j, o, f
+            # f:
+            p[-num_units:] = np.ones(num_units)
 
         return tf.constant(p, dtype)
 
     return _initializer
+
+class SimplifiedJANETCell(tf.compat.v1.nn.rnn_cell.BasicLSTMCell):
+    def __init__(self, num_units, t_max=None, **kwargs):
+        '''
+        t_max should be a float value corresponding to the longest possible
+        time dependency in the input.
+        '''
+        self.num_units = num_units
+        self.t_max = t_max
+        super(SimplifiedJANETCell, self).__init__(num_units, **kwargs)
+
+    def __call__(self, x, state, scope=None):
+        """Long short-term memory cell (LSTM)."""
+        with tf.compat.v1.variable_scope(scope or type(self).__name__):
+            if self._state_is_tuple:
+                c, h = state
+            else:
+                c, h = tf.split(value=state, num_or_size_splits=2, axis=1)
+
+            all_inputs = tf.concat([x, h], 1)
+
+            x_size = x.get_shape().as_list()[1]
+            W_xc = tf.compat.v1.get_variable('W_xc',
+                                   [x_size, self.num_units])
+            W_hc = tf.compat.v1.get_variable('W_hc',
+                                   [self.num_units, self.num_units])
+            W_hf = tf.compat.v1.get_variable('W_hf',
+                                   [self.num_units, self.num_units])
+            if self.t_max is None:
+                bias = tf.compat.v1.get_variable('bias', [self.num_units],
+                                       initializer=bias_initializer(2, simplified=True))
+            else:
+                print('Using chrono initializer ...')
+                bias = tf.compat.v1.get_variable('bias', [self.num_units],
+                                       initializer=chrono_init(self.t_max,
+                                                               2, simplified=True))
+
+            f = tf.matmul(h, W_hf)
+            weights = tf.concat([W_xc, W_hc], 0)
+            j = tf.nn.bias_add(tf.matmul(all_inputs, weights), bias)
+
+            beta = 1
+            #sf = tf.sigmoid(f)
+            #new_c = sf*c + (1-sf)*tf.tanh(j)
+            new_c = tf.sigmoid(f)*c + (1-tf.sigmoid(f-beta))*tf.tanh(j)
+            new_h = new_c
+
+            if self._state_is_tuple:
+                new_state = LSTMStateTuple(new_c, new_h)
+            else:
+                new_state = tf.concat([new_c, new_h], 1)
+            return new_h, new_state
